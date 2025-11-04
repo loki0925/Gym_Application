@@ -1,0 +1,5 @@
+{
+  "name": "GymPro Management",
+  "description": "A modern, responsive web application for managing gym operations, including member tracking, class scheduling, and billing. Built with React, TypeScript, and Tailwind CSS.",
+  "requestFramePermissions": []
+}
