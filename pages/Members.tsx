@@ -1,17 +1,41 @@
 
-import React, { useState, useMemo } from 'react';
-import { mockMembers } from '../data/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Member, MembershipStatus } from '../types';
 import Modal from '../components/Modal';
 import MemberForm from '../components/MemberForm';
 import { PlusIcon } from '../components/icons';
 
 const Members: React.FC = () => {
-  const [members, setMembers] = useState<Member[]>(mockMembers);
+  const [members, setMembers] = useState<Member[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        setError(null);
+        setLoading(true);
+        const response = await fetch('http://localhost:5001/api/members');
+        if (!response.ok) {
+          throw new Error('Failed to fetch data from server.');
+        }
+        const data = await response.json();
+        setMembers(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMembers();
+  }, []);
+
+  // NOTE: These handlers now only affect the frontend state.
+  // In a real app, they would need to make API calls to the backend.
   const handleAddMember = (memberData: Omit<Member, 'id' | 'joinDate' | 'avatarUrl'>) => {
     const newMember: Member = {
       ...memberData,
@@ -101,7 +125,9 @@ const Members: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredMembers.map(member => (
+            {loading && <tr><td colSpan={4} className="text-center p-6 text-brand-text-dark">Loading members...</td></tr>}
+            {error && <tr><td colSpan={4} className="text-center p-6 text-brand-danger">{error}</td></tr>}
+            {!loading && !error && filteredMembers.map(member => (
               <tr key={member.id} className="border-b border-brand-secondary hover:bg-brand-secondary/30 transition-colors">
                 <td className="p-4 flex items-center">
                   <img src={member.avatarUrl} alt={member.name} className="w-10 h-10 rounded-full mr-4"/>
