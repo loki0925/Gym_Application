@@ -1,9 +1,10 @@
-
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Member, MembershipStatus } from '../types';
 import Modal from '../components/Modal';
 import MemberForm from '../components/MemberForm';
 import { PlusIcon } from '../components/icons';
+
+const API_URL = 'http://localhost:5001/api/members';
 
 const Members: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
@@ -13,57 +14,66 @@ const Members: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        setError(null);
-        setLoading(true);
-        const response = await fetch('http://localhost:5001/api/members');
-        if (!response.ok) {
-          throw new Error('Failed to fetch data from server.');
-        }
-        const data = await response.json();
-        setMembers(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  const fetchMembers = useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error('Failed to fetch data from server.');
       }
-    };
-
-    fetchMembers();
+      const data = await response.json();
+      setMembers(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // NOTE: These handlers now only affect the frontend state.
-  // In a real app, they would need to make API calls to the backend.
-  const handleAddMember = (memberData: Omit<Member, 'id' | 'joinDate' | 'avatarUrl'>) => {
-    const newMember: Member = {
-      ...memberData,
-      id: String(Date.now()),
-      joinDate: new Date().toISOString().split('T')[0],
-      avatarUrl: `https://picsum.photos/seed/${Date.now()}/200`,
-    };
-    setMembers([...members, newMember]);
-    setIsModalOpen(false);
-  };
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
   
-  const handleUpdateMember = (memberData: Omit<Member, 'joinDate' | 'avatarUrl'>) => {
-    setMembers(members.map(m => (m.id === memberData.id ? { ...m, ...memberData } : m)));
-    setIsModalOpen(false);
-    setEditingMember(null);
-  };
-  
-  const handleSubmit = (memberData: Omit<Member, 'id' | 'joinDate' | 'avatarUrl'> & { id?: string }) => {
-    if (memberData.id) {
-        handleUpdateMember(memberData as Omit<Member, 'joinDate' | 'avatarUrl'>);
-    } else {
-        handleAddMember(memberData);
+  const handleSubmit = async (memberData: Omit<Member, 'id' | 'joinDate' | 'avatarUrl'> & { id?: string }) => {
+    const isUpdating = !!memberData.id;
+    const url = isUpdating ? `${API_URL}/${memberData.id}` : API_URL;
+    const method = isUpdating ? 'PUT' : 'POST';
+
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(memberData),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Failed to ${isUpdating ? 'update' : 'add'} member.`);
+        }
+        
+        await fetchMembers(); // Re-fetch all members to get the latest state
+        setIsModalOpen(false);
+        setEditingMember(null);
+
+    } catch (err: any) {
+        alert(`Error: ${err.message}`); // Simple error feedback
     }
   };
 
-  const handleDeleteMember = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this member?')) {
-        setMembers(members.filter(m => m.id !== id));
+  const handleDeleteMember = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete member.');
+            }
+            // No need to re-fetch, just remove from local state for faster UI update
+            setMembers(members.filter(m => m.id !== id));
+        } catch (err: any) {
+             alert(`Error: ${err.message}`);
+        }
     }
   };
 
@@ -148,6 +158,11 @@ const Members: React.FC = () => {
                 </td>
               </tr>
             ))}
+             {!loading && !error && filteredMembers.length === 0 && (
+                <tr>
+                    <td colSpan={4} className="text-center p-6 text-brand-text-dark">No members found.</td>
+                </tr>
+             )}
           </tbody>
         </table>
       </div>

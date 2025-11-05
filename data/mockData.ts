@@ -1,18 +1,55 @@
-import { Member, MembershipStatus, GymClass, Payment, MemberGrowth, User, UserRole } from '../types';
+// Fix: Add Member and MembershipStatus to imports
+import { GymClass, Payment, MemberGrowth, User, UserRole, Member, MembershipStatus } from '../types';
 
 export const mockUsers: User[] = [
   { id: 'u1', name: 'Admin Pro', email: 'admin@gympro.com', role: UserRole.Admin, password: 'password123' },
   { id: 'u2', name: 'Regular User', email: 'user@gympro.com', role: UserRole.User, password: 'password123' },
 ];
 
+// Fix: Add and export mockMembers array
 export const mockMembers: Member[] = [
-  { id: '1', name: 'Alice Johnson', email: 'alice@example.com', joinDate: '2023-01-15', membershipStatus: MembershipStatus.Active, avatarUrl: 'https://picsum.photos/seed/1/200' },
-  { id: '2', name: 'Bob Williams', email: 'bob@example.com', joinDate: '2023-02-20', membershipStatus: MembershipStatus.Active, avatarUrl: 'https://picsum.photos/seed/2/200' },
-  { id: '3', name: 'Charlie Brown', email: 'charlie@example.com', joinDate: '2022-11-05', membershipStatus: MembershipStatus.Inactive, avatarUrl: 'https://picsum.photos/seed/3/200' },
-  { id: '4', name: 'Diana Prince', email: 'diana@example.com', joinDate: '2023-03-10', membershipStatus: MembershipStatus.Active, avatarUrl: 'https://picsum.photos/seed/4/200' },
-  { id: '5', name: 'Ethan Hunt', email: 'ethan@example.com', joinDate: '2023-05-01', membershipStatus: MembershipStatus.Frozen, avatarUrl: 'https://picsum.photos/seed/5/200' },
-  { id: '6', name: 'Fiona Glenanne', email: 'fiona@example.com', joinDate: '2023-06-12', membershipStatus: MembershipStatus.Active, avatarUrl: 'https://picsum.photos/seed/6/200' },
+  {
+    id: 'm1',
+    name: 'Alice Johnson',
+    email: 'alice.j@example.com',
+    joinDate: '2023-01-15',
+    membershipStatus: MembershipStatus.Active,
+    avatarUrl: `https://picsum.photos/seed/m1/200`,
+  },
+  {
+    id: 'm2',
+    name: 'Bob Williams',
+    email: 'bob.w@example.com',
+    joinDate: '2023-02-20',
+    membershipStatus: MembershipStatus.Active,
+    avatarUrl: `https://picsum.photos/seed/m2/200`,
+  },
+  {
+    id: 'm3',
+    name: 'Charlie Brown',
+    email: 'charlie.b@example.com',
+    joinDate: '2022-11-10',
+    membershipStatus: MembershipStatus.Inactive,
+    avatarUrl: `https://picsum.photos/seed/m3/200`,
+  },
+  {
+    id: 'm4',
+    name: 'Diana Prince',
+    email: 'diana.p@example.com',
+    joinDate: '2023-05-01',
+    membershipStatus: MembershipStatus.Active,
+    avatarUrl: `https://picsum.photos/seed/m4/200`,
+  },
+  {
+    id: 'm5',
+    name: 'Ethan Hunt',
+    email: 'ethan.h@example.com',
+    joinDate: '2023-06-01',
+    membershipStatus: MembershipStatus.Frozen,
+    avatarUrl: `https://picsum.photos/seed/m5/200`,
+  },
 ];
+
 
 export const mockClasses: GymClass[] = [
   { id: 'c1', name: 'Morning Yoga', instructor: 'Sarah K.', day: 'Monday', time: '08:00', duration: 60, capacity: 20, enrolled: 15, category: 'Yoga' },
