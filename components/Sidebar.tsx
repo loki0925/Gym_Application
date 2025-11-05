@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   DashboardIcon, MembersIcon, ScheduleIcon, BillingIcon, LogoutIcon,
-  ActivityIcon, ProgressIcon, MealIcon, ExerciseIcon, WaterIcon
+  ActivityIcon, ProgressIcon, MealIcon, ExerciseIcon, WaterIcon, GeminiIcon
 } from './icons';
 import { UserRole } from '../types';
 
@@ -66,6 +66,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) =>
             <NavItem to="/meal-plan" icon={<MealIcon className="w-5 h-5" />}>Meal Plan</NavItem>
             <NavItem to="/exercises" icon={<ExerciseIcon className="w-5 h-5" />}>Exercises</NavItem>
             <NavItem to="/water-intake" icon={<WaterIcon className="w-5 h-5" />}>Water Intake</NavItem>
+
+            <h3 className="px-4 pt-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">AI Tools</h3>
+            <NavItem to="/gemini" icon={<GeminiIcon className="w-5 h-5" />}>Ask Gemini</NavItem>
+
           </nav>
         </div>
         <div className="mt-auto">

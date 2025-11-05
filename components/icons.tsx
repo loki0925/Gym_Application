@@ -55,3 +55,7 @@ export const ExerciseIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => 
 export const WaterIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 22s8-4.5 8-11.8A8 8 0 0012 2a8 8 0 00-8 8.2C4 17.5 12 22 12 22z"></path></svg>
 );
+
+export const GeminiIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm-1.5 2a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 15a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 2a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm-7.25-10a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm-1.25 1.5a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Zm17 0a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Zm-1.25-1.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z" /></svg>
+);
