@@ -1,9 +1,11 @@
 
-import React from 'react';
+
+import React, { useMemo } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { mockMembers, mockClasses, mockPayments, memberGrowthData } from '../data/mockData';
 import { MembersIcon, ScheduleIcon, BillingIcon } from '../components/icons';
 import { MembershipStatus } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
     <div className="bg-brand-surface rounded-xl p-6 flex items-center shadow-lg">
@@ -18,8 +20,15 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
 );
 
 const Dashboard: React.FC = () => {
-    const totalMembers = mockMembers.length;
-    const activeMembers = mockMembers.filter(m => m.membershipStatus === MembershipStatus.Active).length;
+    const { user } = useAuth();
+    
+    const myMembers = useMemo(() => {
+        if (!user) return [];
+        return mockMembers.filter(m => m.assignedAdminId === user.id);
+    }, [user]);
+
+    const totalMembers = myMembers.length;
+    const activeMembers = myMembers.filter(m => m.membershipStatus === MembershipStatus.Active).length;
     const upcomingClasses = mockClasses.filter(c => ['Saturday', 'Sunday'].includes(c.day)).length;
     
     return (
@@ -27,7 +36,7 @@ const Dashboard: React.FC = () => {
             <h1 className="text-3xl font-bold text-brand-text-light">Dashboard</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatCard title="Total Members" value={totalMembers} icon={<MembersIcon className="w-7 h-7 text-brand-primary" />} />
+                <StatCard title="My Members" value={totalMembers} icon={<MembersIcon className="w-7 h-7 text-brand-primary" />} />
                 <StatCard title="Active Members" value={activeMembers} icon={<MembersIcon className="w-7 h-7 text-brand-success" />} />
                 <StatCard title="Weekend Classes" value={upcomingClasses} icon={<ScheduleIcon className="w-7 h-7 text-brand-warning" />} />
             </div>
@@ -61,7 +70,7 @@ const Dashboard: React.FC = () => {
                                 <span className="text-xs text-brand-text-dark">{new Date(p.date).toLocaleDateString()}</span>
                             </li>
                         ))}
-                         {mockMembers.slice(0, 2).map(m => (
+                         {myMembers.slice(0, 2).map(m => (
                             <li key={m.id} className="flex items-center justify-between">
                                 <div className="flex items-center">
                                     <div className="bg-brand-primary/20 p-2 rounded-full"><MembersIcon className="h-5 w-5 text-brand-primary" /></div>

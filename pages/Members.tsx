@@ -1,79 +1,54 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Member, MembershipStatus } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Member, MembershipStatus, MealPlan } from '../types';
 import Modal from '../components/Modal';
 import MemberForm from '../components/MemberForm';
 import { PlusIcon } from '../components/icons';
-
-const API_URL = 'http://localhost:5001/api/members';
+import { mockMembers, mockMealPlans } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 
 const Members: React.FC = () => {
-  const [members, setMembers] = useState<Member[]>([]);
+  const { user } = useAuth();
+  const [members, setMembers] = useState<Member[]>(mockMembers);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [mealPlans] = useState<MealPlan[]>(mockMealPlans);
 
-  const fetchMembers = useCallback(async () => {
-    try {
-      setError(null);
-      setLoading(true);
-      const response = await fetch(API_URL);
-      if (!response.ok) {
-        throw new Error('Failed to fetch data from server.');
-      }
-      const data = await response.json();
-      setMembers(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  const handleSubmit = (memberData: Omit<Member, 'id' | 'joinDate' | 'avatarUrl' | 'assignedAdminId'> & { id?: string }) => {
+    if (!user) return; // Should not happen on an admin route
+
+    if (memberData.id) { // Editing
+      setMembers(members.map(m => 
+        m.id === memberData.id 
+          ? { 
+              ...m, 
+              name: memberData.name, 
+              email: memberData.email, 
+              membershipStatus: memberData.membershipStatus,
+              assignedMealPlanId: memberData.assignedMealPlanId,
+            } 
+          : m
+      ));
+    } else { // Adding
+      const newMember: Member = {
+        id: `m_${Date.now()}`,
+        name: memberData.name,
+        email: memberData.email,
+        membershipStatus: memberData.membershipStatus,
+        joinDate: new Date().toISOString(),
+        avatarUrl: `https://picsum.photos/seed/m_${Date.now()}/200`,
+        assignedMealPlanId: memberData.assignedMealPlanId,
+        assignedAdminId: user.id, // Auto-assign to current admin
+      };
+      setMembers(prev => [newMember, ...prev]);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
-  
-  const handleSubmit = async (memberData: Omit<Member, 'id' | 'joinDate' | 'avatarUrl'> & { id?: string }) => {
-    const isUpdating = !!memberData.id;
-    const url = isUpdating ? `${API_URL}/${memberData.id}` : API_URL;
-    const method = isUpdating ? 'PUT' : 'POST';
-
-    try {
-        const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(memberData),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `Failed to ${isUpdating ? 'update' : 'add'} member.`);
-        }
-        
-        await fetchMembers(); // Re-fetch all members to get the latest state
-        setIsModalOpen(false);
-        setEditingMember(null);
-
-    } catch (err: any) {
-        alert(`Error: ${err.message}`); // Simple error feedback
-    }
+    setIsModalOpen(false);
+    setEditingMember(null);
   };
 
-  const handleDeleteMember = async (id: string) => {
+  const handleDeleteMember = (id: string) => {
     if (window.confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
-        try {
-            const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to delete member.');
-            }
-            // No need to re-fetch, just remove from local state for faster UI update
-            setMembers(members.filter(m => m.id !== id));
-        } catch (err: any) {
-             alert(`Error: ${err.message}`);
-        }
+      setMembers(members.filter(m => m.id !== id));
     }
   };
 
@@ -87,13 +62,15 @@ const Members: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const filteredMembers = useMemo(() =>
-    members.filter(member =>
-      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [members, searchTerm]
-  );
+  const filteredMembers = useMemo(() => {
+    if (!user) return [];
+    return members
+      .filter(member => member.assignedAdminId === user.id)
+      .filter(member =>
+        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.email.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+  }, [members, searchTerm, user]);
   
   const getStatusChip = (status: MembershipStatus) => {
     const baseClasses = "px-3 py-1 text-xs font-semibold rounded-full";
@@ -108,11 +85,11 @@ const Members: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <h1 className="text-3xl font-bold text-brand-text-light">Members</h1>
+          <h1 className="text-3xl font-bold text-brand-text-light">My Members</h1>
           <div className="w-full md:w-auto flex gap-4">
             <input
                 type="text"
-                placeholder="Search members..."
+                placeholder="Search my members..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full md:w-64 bg-brand-surface border-brand-secondary text-brand-text-light rounded-md px-4 py-2 focus:ring-2 focus:ring-brand-primary focus:outline-none"
@@ -131,36 +108,40 @@ const Members: React.FC = () => {
               <th className="p-4 text-sm font-semibold text-brand-text-dark">Name</th>
               <th className="p-4 text-sm font-semibold text-brand-text-dark hidden sm:table-cell">Join Date</th>
               <th className="p-4 text-sm font-semibold text-brand-text-dark">Status</th>
+              <th className="p-4 text-sm font-semibold text-brand-text-dark hidden lg:table-cell">Assigned Meal Plan</th>
               <th className="p-4 text-sm font-semibold text-brand-text-dark">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={4} className="text-center p-6 text-brand-text-dark">Loading members...</td></tr>}
-            {error && <tr><td colSpan={4} className="text-center p-6 text-brand-danger">{error}</td></tr>}
-            {!loading && !error && filteredMembers.map(member => (
-              <tr key={member.id} className="border-b border-brand-secondary hover:bg-brand-secondary/30 transition-colors">
-                <td className="p-4 flex items-center">
-                  <img src={member.avatarUrl} alt={member.name} className="w-10 h-10 rounded-full mr-4"/>
-                  <div>
-                    <p className="font-medium text-brand-text-light">{member.name}</p>
-                    <p className="text-sm text-brand-text-dark">{member.email}</p>
-                  </div>
-                </td>
-                <td className="p-4 text-brand-text-light hidden sm:table-cell">{new Date(member.joinDate).toLocaleDateString()}</td>
-                <td className="p-4">
-                  <span className={getStatusChip(member.membershipStatus)}>{member.membershipStatus}</span>
-                </td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    <button onClick={() => openEditModal(member)} className="text-brand-primary hover:text-brand-primary-hover"><i className="fas fa-pencil-alt"></i></button>
-                    <button onClick={() => handleDeleteMember(member.id)} className="text-brand-danger hover:opacity-80"><i className="fas fa-trash-alt"></i></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-             {!loading && !error && filteredMembers.length === 0 && (
+            {filteredMembers.map(member => {
+              return (
+                <tr key={member.id} className="border-b border-brand-secondary hover:bg-brand-secondary/30 transition-colors">
+                  <td className="p-4 flex items-center">
+                    <img src={member.avatarUrl} alt={member.name} className="w-10 h-10 rounded-full mr-4"/>
+                    <div>
+                      <p className="font-medium text-brand-text-light">{member.name}</p>
+                      <p className="text-sm text-brand-text-dark">{member.email}</p>
+                    </div>
+                  </td>
+                  <td className="p-4 text-brand-text-light hidden sm:table-cell">{new Date(member.joinDate).toLocaleDateString()}</td>
+                  <td className="p-4">
+                    <span className={getStatusChip(member.membershipStatus)}>{member.membershipStatus}</span>
+                  </td>
+                  <td className="p-4 text-brand-text-light hidden lg:table-cell">
+                    {mealPlans.find(p => p.id === member.assignedMealPlanId)?.name || <span className="text-brand-text-dark">None</span>}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => openEditModal(member)} className="text-brand-primary hover:text-brand-primary-hover"><i className="fas fa-pencil-alt"></i></button>
+                      <button onClick={() => handleDeleteMember(member.id)} className="text-brand-danger hover:opacity-80"><i className="fas fa-trash-alt"></i></button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+             {filteredMembers.length === 0 && (
                 <tr>
-                    <td colSpan={4} className="text-center p-6 text-brand-text-dark">No members found.</td>
+                    <td colSpan={5} className="text-center p-6 text-brand-text-dark">No members assigned to you were found.</td>
                 </tr>
              )}
           </tbody>
@@ -168,7 +149,12 @@ const Members: React.FC = () => {
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingMember ? 'Edit Member' : 'Add New Member'}>
-        <MemberForm onSubmit={handleSubmit} onCancel={() => setIsModalOpen(false)} initialData={editingMember} />
+        <MemberForm 
+          onSubmit={handleSubmit} 
+          onCancel={() => setIsModalOpen(false)} 
+          initialData={editingMember}
+          mealPlans={mealPlans} 
+        />
       </Modal>
     </div>
   );

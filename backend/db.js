@@ -1,12 +1,13 @@
 const mysql = require('mysql2/promise');
+require('dotenv').config(); // Load environment variables from .env file
 
 // Create a connection pool. Using a pool is more efficient than creating a new
 // connection for every query. It manages multiple connections automatically.
 const pool = mysql.createPool({
-  host: 'localhost', // Or your database host
-  user: 'root',      // Your MySQL username
-  password: '', // <-- IMPORTANT: Replace with your actual MySQL password
-  database: 'gympro',  // The database name you created
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'gympro',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0

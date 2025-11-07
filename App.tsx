@@ -14,6 +14,7 @@ import MealPlan from './pages/MealPlan';
 import Exercises from './pages/Exercises';
 import WaterIntake from './pages/WaterIntake';
 import Gemini from './pages/Gemini'; // Import the new Gemini page
+import WorkoutPlan from './pages/WorkoutPlan'; // Import the new WorkoutPlan page
 import { MenuIcon } from './components/icons';
 import { UserRole } from './types';
 
@@ -100,6 +101,7 @@ const App: React.FC = () => {
              <Route path="activity" element={<Activity />} />
              <Route path="progress" element={<Progress />} />
              <Route path="meal-plan" element={<MealPlan />} />
+             <Route path="workout-plan" element={<WorkoutPlan />} />
              <Route path="exercises" element={<Exercises />} />
              <Route path="water-intake" element={<WaterIntake />} />
              <Route path="gemini" element={<Gemini />} /> {/* Add Gemini route */}
