@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { mockActivityLog } from '../data/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ActivityLog } from '../types';
 import { PlusIcon } from '../components/icons';
 import Modal from '../components/Modal';
+import { api } from '../utils/api';
+import Loading from '../components/Loading';
 
 const activityIcons: Record<ActivityLog['type'], string> = {
   Running: 'fas fa-running',
@@ -64,8 +65,24 @@ const ActivityForm: React.FC<{ onSubmit: (activity: Omit<ActivityLog, 'id'|'date
 
 
 const Activity: React.FC = () => {
-    const [activities, setActivities] = useState<ActivityLog[]>(mockActivityLog);
+    const [activities, setActivities] = useState<ActivityLog[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    useEffect(() => {
+        const fetchActivities = async () => {
+            setLoading(true);
+            try {
+                const data = await api.get<ActivityLog[]>('/activity-log');
+                setActivities(data);
+            } catch (error) {
+                console.error("Failed to fetch activities:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchActivities();
+    }, []);
 
     const weeklyStats = useMemo(() => {
         const oneWeekAgo = new Date();
@@ -82,14 +99,15 @@ const Activity: React.FC = () => {
         };
     }, [activities]);
 
-    const handleAddActivity = (activityData: Omit<ActivityLog, 'id'|'date'>) => {
-        const newActivity: ActivityLog = {
-            ...activityData,
-            id: `a_${Date.now()}`,
-            date: new Date().toISOString(),
-        };
-        setActivities(prev => [newActivity, ...prev]);
-        setIsModalOpen(false);
+    const handleAddActivity = async (activityData: Omit<ActivityLog, 'id'|'date'>) => {
+        try {
+            const newActivity = await api.post<ActivityLog>('/activity-log', activityData);
+            setActivities(prev => [newActivity, ...prev]);
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to add activity:", error);
+            alert("Error: Could not log new activity.");
+        }
     }
 
     return (
@@ -110,29 +128,31 @@ const Activity: React.FC = () => {
 
             <div className="bg-brand-surface rounded-xl shadow-lg overflow-x-auto">
                 <h2 className="text-xl font-semibold text-brand-text-light p-4 border-b border-brand-secondary">Activity History</h2>
-                <table className="w-full text-left">
-                    <thead className="border-b border-brand-secondary">
-                        <tr>
-                            <th className="p-4 text-sm font-semibold text-brand-text-dark">Activity</th>
-                            <th className="p-4 text-sm font-semibold text-brand-text-dark hidden sm:table-cell">Date</th>
-                            <th className="p-4 text-sm font-semibold text-brand-text-dark">Duration</th>
-                            <th className="p-4 text-sm font-semibold text-brand-text-dark">Calories Burned</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {activities.map(activity => (
-                        <tr key={activity.id} className="border-b border-brand-secondary hover:bg-brand-secondary/30 transition-colors">
-                            <td className="p-4 flex items-center">
-                                <i className={`${activityIcons[activity.type]} text-brand-primary w-6 text-center`}></i>
-                                <span className="ml-4 font-medium text-brand-text-light">{activity.type}</span>
-                            </td>
-                            <td className="p-4 text-brand-text-light hidden sm:table-cell">{new Date(activity.date).toLocaleDateString()}</td>
-                            <td className="p-4 text-brand-text-light">{activity.duration} min</td>
-                            <td className="p-4 text-brand-text-light">{activity.caloriesBurned} kcal</td>
-                        </tr>
-                        ))}
-                    </tbody>
-                </table>
+                {loading ? <Loading /> : (
+                    <table className="w-full text-left">
+                        <thead className="border-b border-brand-secondary">
+                            <tr>
+                                <th className="p-4 text-sm font-semibold text-brand-text-dark">Activity</th>
+                                <th className="p-4 text-sm font-semibold text-brand-text-dark hidden sm:table-cell">Date</th>
+                                <th className="p-4 text-sm font-semibold text-brand-text-dark">Duration</th>
+                                <th className="p-4 text-sm font-semibold text-brand-text-dark">Calories Burned</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {activities.map(activity => (
+                            <tr key={activity.id} className="border-b border-brand-secondary hover:bg-brand-secondary/30 transition-colors">
+                                <td className="p-4 flex items-center">
+                                    <i className={`${activityIcons[activity.type]} text-brand-primary w-6 text-center`}></i>
+                                    <span className="ml-4 font-medium text-brand-text-light">{activity.type}</span>
+                                </td>
+                                <td className="p-4 text-brand-text-light hidden sm:table-cell">{new Date(activity.date).toLocaleDateString()}</td>
+                                <td className="p-4 text-brand-text-light">{activity.duration} min</td>
+                                <td className="p-4 text-brand-text-light">{activity.caloriesBurned} kcal</td>
+                            </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
              <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Log New Activity">

@@ -1,7 +1,8 @@
 
-import React from 'react';
-import { mockClasses } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
 import { GymClass } from '../types';
+import { api } from '../utils/api';
+import Loading from '../components/Loading';
 
 const daysOfWeek: GymClass['day'][] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -25,26 +26,45 @@ const ClassCard: React.FC<{ gymClass: GymClass }> = ({ gymClass }) => (
 );
 
 const Schedule: React.FC = () => {
+  const [classes, setClasses] = useState<GymClass[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setLoading(true);
+        const data = await api.get<GymClass[]>('/classes');
+        setClasses(data);
+      } catch (error) {
+        console.error("Failed to fetch classes:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClasses();
+  }, []);
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-brand-text-light">Class Schedule</h1>
 
       <div className="bg-brand-surface rounded-xl shadow-lg p-4 sm:p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-          {daysOfWeek.map(day => (
-            <div key={day} className="space-y-4">
-              <h2 className="text-center font-semibold text-lg text-brand-primary">{day}</h2>
-              <div className="space-y-3">
-                {mockClasses
-                  .filter(c => c.day === day)
-                  .sort((a, b) => a.time.localeCompare(b.time))
-                  .map(gymClass => (
-                    <ClassCard key={gymClass.id} gymClass={gymClass} />
-                ))}
+        {loading ? <Loading /> : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+            {daysOfWeek.map(day => (
+              <div key={day} className="space-y-4">
+                <h2 className="text-center font-semibold text-lg text-brand-primary">{day}</h2>
+                <div className="space-y-3">
+                  {classes
+                    .filter(c => c.day === day)
+                    .map(gymClass => (
+                      <ClassCard key={gymClass.id} gymClass={gymClass} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

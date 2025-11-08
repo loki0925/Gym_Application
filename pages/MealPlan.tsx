@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { mockMembers, mockMealPlans } from '../data/mockData';
-import { DayOfWeek, MealPlan as MealPlanType, Meal, MealType } from '../types';
+import { DayOfWeek, MealPlan as MealPlanType, Meal, MealType, Member } from '../types';
+import { api } from '../utils/api';
+import Loading from '../components/Loading';
 
 const days: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const mealTypes: MealType[] = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -14,10 +15,42 @@ const planTypeColors: Record<MealPlanType['type'], string> = {
 
 const MealPlan: React.FC = () => {
     const { user } = useAuth();
+    const [assignedPlan, setAssignedPlan] = useState<MealPlanType | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // Find the current member and their assigned meal plan
-    const currentMember = mockMembers.find(m => m.email === user?.email);
-    const assignedPlan = mockMealPlans.find(p => p.id === currentMember?.assignedMealPlanId);
+    useEffect(() => {
+        const fetchMealPlan = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            };
+
+            setLoading(true);
+            try {
+                // In a larger app, we might have a dedicated /api/me endpoint
+                const allMembers = await api.get<Member[]>('/members');
+                const currentMember = allMembers.find(m => m.email === user.email);
+
+                if (currentMember && currentMember.assignedMealPlanId) {
+                    const plan = await api.get<MealPlanType>(`/meal-plans/${currentMember.assignedMealPlanId}`);
+                    setAssignedPlan(plan);
+                } else {
+                    setAssignedPlan(null);
+                }
+            } catch (error) {
+                console.error("Failed to fetch meal plan:", error);
+                setAssignedPlan(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMealPlan();
+    }, [user]);
+
+    if (loading) {
+        return <Loading />;
+    }
 
     if (!assignedPlan) {
         return (

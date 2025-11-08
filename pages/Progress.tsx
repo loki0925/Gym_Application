@@ -1,13 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { mockWeightHistory } from '../data/mockData';
 import { WeightEntry } from '../types';
+import { api } from '../utils/api';
+import Loading from '../components/Loading';
 
 const Progress: React.FC = () => {
-  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>(mockWeightHistory);
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newWeight, setNewWeight] = useState('');
 
-  const handleLogWeight = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchWeightHistory = async () => {
+      setLoading(true);
+      try {
+        const data = await api.get<WeightEntry[]>('/weight-history');
+        setWeightHistory(data);
+      } catch (error) {
+        console.error("Failed to fetch weight history:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWeightHistory();
+  }, []);
+
+  const handleLogWeight = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWeight || isNaN(parseFloat(newWeight))) return;
 
@@ -16,8 +33,14 @@ const Progress: React.FC = () => {
       weight: parseFloat(newWeight),
     };
 
-    setWeightHistory(prev => [...prev, newEntry].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
-    setNewWeight('');
+    try {
+      const loggedEntry = await api.post<WeightEntry>('/weight-history', newEntry);
+      setWeightHistory(prev => [...prev, loggedEntry].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      setNewWeight('');
+    } catch (error) {
+      console.error("Failed to log new weight:", error);
+      alert("Error: Could not log new weight entry.");
+    }
   };
 
   return (
@@ -26,18 +49,20 @@ const Progress: React.FC = () => {
 
       <div className="bg-brand-surface rounded-xl p-6 shadow-lg">
         <h2 className="text-xl font-semibold mb-4 text-brand-text-light">Weight Over Time</h2>
-        <div style={{ width: '100%', height: 300 }}>
-          <ResponsiveContainer>
-            <LineChart data={weightHistory}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="date" stroke="#94a3b8" tickFormatter={(str) => new Date(str).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} />
-              <YAxis stroke="#94a3b8" domain={['dataMin - 2', 'dataMax + 2']} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }} labelStyle={{ color: '#f8fafc' }} />
-              <Legend />
-              <Line type="monotone" dataKey="weight" stroke="#818cf8" strokeWidth={2} activeDot={{ r: 8 }} name="Weight (kg)" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        {loading ? <Loading className="h-[300px]" /> : (
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <LineChart data={weightHistory}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="date" stroke="#94a3b8" tickFormatter={(str) => new Date(str).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} />
+                <YAxis stroke="#94a3b8" domain={['dataMin - 2', 'dataMax + 2']} />
+                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }} labelStyle={{ color: '#f8fafc' }} />
+                <Legend />
+                <Line type="monotone" dataKey="weight" stroke="#818cf8" strokeWidth={2} activeDot={{ r: 8 }} name="Weight (kg)" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

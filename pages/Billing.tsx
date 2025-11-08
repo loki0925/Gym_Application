@@ -1,11 +1,28 @@
 
-import React, { useState, useMemo } from 'react';
-import { mockPayments } from '../data/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Payment } from '../types';
+import { api } from '../utils/api';
+import Loading from '../components/Loading';
 
 const Billing: React.FC = () => {
-  const [payments, setPayments] = useState<Payment[]>(mockPayments);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      setLoading(true);
+      try {
+        const data = await api.get<Payment[]>('/payments');
+        setPayments(data);
+      } catch (error) {
+        console.error("Failed to fetch payments:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPayments();
+  }, []);
 
   const filteredPayments = useMemo(() =>
     payments.filter(payment =>
@@ -38,30 +55,32 @@ const Billing: React.FC = () => {
       </div>
 
       <div className="bg-brand-surface rounded-xl shadow-lg overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="border-b border-brand-secondary">
-            <tr>
-              <th className="p-4 text-sm font-semibold text-brand-text-dark">Member Name</th>
-              <th className="p-4 text-sm font-semibold text-brand-text-dark hidden sm:table-cell">Payment ID</th>
-              <th className="p-4 text-sm font-semibold text-brand-text-dark">Date</th>
-              <th className="p-4 text-sm font-semibold text-brand-text-dark">Amount</th>
-              <th className="p-4 text-sm font-semibold text-brand-text-dark">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPayments.map(payment => (
-              <tr key={payment.id} className="border-b border-brand-secondary hover:bg-brand-secondary/30 transition-colors">
-                <td className="p-4 font-medium text-brand-text-light">{payment.memberName}</td>
-                <td className="p-4 text-brand-text-dark font-mono hidden sm:table-cell">{payment.id}</td>
-                <td className="p-4 text-brand-text-light">{new Date(payment.date).toLocaleDateString()}</td>
-                <td className="p-4 text-brand-text-light">${payment.amount.toFixed(2)}</td>
-                <td className="p-4">
-                  <span className={getStatusChip(payment.status)}>{payment.status}</span>
-                </td>
+        {loading ? <Loading /> : (
+          <table className="w-full text-left">
+            <thead className="border-b border-brand-secondary">
+              <tr>
+                <th className="p-4 text-sm font-semibold text-brand-text-dark">Member Name</th>
+                <th className="p-4 text-sm font-semibold text-brand-text-dark hidden sm:table-cell">Payment ID</th>
+                <th className="p-4 text-sm font-semibold text-brand-text-dark">Date</th>
+                <th className="p-4 text-sm font-semibold text-brand-text-dark">Amount</th>
+                <th className="p-4 text-sm font-semibold text-brand-text-dark">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredPayments.map(payment => (
+                <tr key={payment.id} className="border-b border-brand-secondary hover:bg-brand-secondary/30 transition-colors">
+                  <td className="p-4 font-medium text-brand-text-light">{payment.memberName}</td>
+                  <td className="p-4 text-brand-text-dark font-mono hidden sm:table-cell">{payment.id}</td>
+                  <td className="p-4 text-brand-text-light">{new Date(payment.date).toLocaleDateString()}</td>
+                  <td className="p-4 text-brand-text-light">${payment.amount.toFixed(2)}</td>
+                  <td className="p-4">
+                    <span className={getStatusChip(payment.status)}>{payment.status}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

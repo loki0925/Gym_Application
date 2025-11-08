@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { mockExercises } from '../data/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Exercise } from '../types';
+import { api } from '../utils/api';
+import Loading from '../components/Loading';
 
 const muscleGroups: Exercise['muscleGroup'][] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
 
@@ -15,16 +16,33 @@ const ExerciseCard: React.FC<{ exercise: Exercise }> = ({ exercise }) => (
 );
 
 const Exercises: React.FC = () => {
+    const [exercises, setExercises] = useState<Exercise[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedGroup, setSelectedGroup] = useState<Exercise['muscleGroup'] | 'All'>('All');
 
+    useEffect(() => {
+        const fetchExercises = async () => {
+            setLoading(true);
+            try {
+                const data = await api.get<Exercise[]>('/exercises');
+                setExercises(data);
+            } catch (error) {
+                console.error("Failed to fetch exercises:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchExercises();
+    }, []);
+
     const filteredExercises = useMemo(() => {
-        return mockExercises.filter(ex => {
+        return exercises.filter(ex => {
             const matchesGroup = selectedGroup === 'All' || ex.muscleGroup === selectedGroup;
             const matchesSearch = ex.name.toLowerCase().includes(searchTerm.toLowerCase());
             return matchesGroup && matchesSearch;
         });
-    }, [searchTerm, selectedGroup]);
+    }, [exercises, searchTerm, selectedGroup]);
 
     return (
         <div className="space-y-6">
@@ -49,15 +67,19 @@ const Exercises: React.FC = () => {
                      </select>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredExercises.map(exercise => (
-                        <ExerciseCard key={exercise.id} exercise={exercise} />
-                    ))}
-                </div>
-                 {filteredExercises.length === 0 && (
-                    <div className="text-center p-10 text-brand-text-dark">
-                        <p>No exercises found matching your criteria.</p>
+                {loading ? <Loading /> : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredExercises.map(exercise => (
+                            <ExerciseCard key={exercise.id} exercise={exercise} />
+                        ))}
                     </div>
+                    {filteredExercises.length === 0 && (
+                        <div className="text-center p-10 text-brand-text-dark">
+                            <p>No exercises found matching your criteria.</p>
+                        </div>
+                    )}
+                  </>
                 )}
             </div>
         </div>

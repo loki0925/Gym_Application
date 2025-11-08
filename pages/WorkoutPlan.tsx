@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { mockExercises } from '../data/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DayOfWeek, Exercise } from '../types';
 import { PlusIcon } from '../components/icons';
+import { api } from '../utils/api';
+import Loading from '../components/Loading';
 
 const days: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const muscleGroups: Exercise['muscleGroup'][] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
@@ -20,16 +21,32 @@ const initialPlanState = days.reduce((acc, day) => {
 
 const WorkoutPlan: React.FC = () => {
     const [plan, setPlan] = useState<UserWorkoutPlan>(initialPlanState);
+    const [exercises, setExercises] = useState<Exercise[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedDay, setSelectedDay] = useState<DayOfWeek>('Monday');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedGroup, setSelectedGroup] = useState<Exercise['muscleGroup'] | 'All'>('All');
 
+    useEffect(() => {
+        const fetchExercises = async () => {
+            setLoading(true);
+            try {
+                const data = await api.get<Exercise[]>('/exercises');
+                setExercises(data);
+            } catch (error) {
+                console.error("Failed to fetch exercises:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchExercises();
+    }, []);
+
     const handleAddExercise = (day: DayOfWeek, exercise: Exercise) => {
-        // Prevent adding exercises on Saturday
         if (day === 'Saturday') return;
         
         const newEntry: WorkoutEntry = {
-            instanceId: `${exercise.id}_${Date.now()}_${Math.random()}`, // Add random to ensure uniqueness
+            instanceId: `${exercise.id}_${Date.now()}_${Math.random()}`,
             exercise: exercise
         };
 
@@ -47,12 +64,12 @@ const WorkoutPlan: React.FC = () => {
     };
 
     const filteredExercises = useMemo(() => {
-        return mockExercises.filter(ex => {
+        return exercises.filter(ex => {
             const matchesGroup = selectedGroup === 'All' || ex.muscleGroup === selectedGroup;
             const matchesSearch = ex.name.toLowerCase().includes(searchTerm.toLowerCase());
             return matchesGroup && matchesSearch;
         });
-    }, [searchTerm, selectedGroup]);
+    }, [exercises, searchTerm, selectedGroup]);
 
     return (
         <div className="space-y-6">
@@ -121,24 +138,26 @@ const WorkoutPlan: React.FC = () => {
                          </select>
                     </div>
                     <div className="flex-grow overflow-y-auto pr-2 -mr-2">
-                        <ul className="space-y-2">
-                            {filteredExercises.map(exercise => (
-                                <li key={exercise.id} className="flex justify-between items-center bg-brand-secondary/50 p-3 rounded-md">
-                                    <div>
-                                        <p className="font-medium text-brand-text-light">{exercise.name}</p>
-                                        <p className="text-xs text-brand-text-dark">{exercise.muscleGroup}</p>
-                                    </div>
-                                    <button 
-                                      onClick={() => handleAddExercise(selectedDay, exercise)} 
-                                      className="text-brand-success hover:opacity-75 text-xl disabled:text-brand-text-dark disabled:cursor-not-allowed"
-                                      title={`Add to ${selectedDay}`}
-                                      disabled={selectedDay === 'Saturday'}
-                                      >
-                                      <PlusIcon className="w-5 h-5"/>
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
+                        {loading ? <Loading /> : (
+                            <ul className="space-y-2">
+                                {filteredExercises.map(exercise => (
+                                    <li key={exercise.id} className="flex justify-between items-center bg-brand-secondary/50 p-3 rounded-md">
+                                        <div>
+                                            <p className="font-medium text-brand-text-light">{exercise.name}</p>
+                                            <p className="text-xs text-brand-text-dark">{exercise.muscleGroup}</p>
+                                        </div>
+                                        <button 
+                                          onClick={() => handleAddExercise(selectedDay, exercise)} 
+                                          className="text-brand-success hover:opacity-75 text-xl disabled:text-brand-text-dark disabled:cursor-not-allowed"
+                                          title={`Add to ${selectedDay}`}
+                                          disabled={selectedDay === 'Saturday'}
+                                          >
+                                          <PlusIcon className="w-5 h-5"/>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
                 </div>
             </div>

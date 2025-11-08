@@ -1,11 +1,12 @@
 
-
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { mockMembers, mockClasses, mockPayments, memberGrowthData } from '../data/mockData';
+import { Member, GymClass, Payment, MemberGrowth } from '../types';
 import { MembersIcon, ScheduleIcon, BillingIcon } from '../components/icons';
 import { MembershipStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../utils/api';
+import Loading from '../components/Loading';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
     <div className="bg-brand-surface rounded-xl p-6 flex items-center shadow-lg">
@@ -21,15 +22,53 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
-    
-    const myMembers = useMemo(() => {
-        if (!user) return [];
-        return mockMembers.filter(m => m.assignedAdminId === user.id);
-    }, [user]);
+    const [loading, setLoading] = useState(true);
+    const [members, setMembers] = useState<Member[]>([]);
+    const [classes, setClasses] = useState<GymClass[]>([]);
+    const [payments, setPayments] = useState<Payment[]>([]);
+    const [growthData, setGrowthData] = useState<MemberGrowth[]>([]);
 
-    const totalMembers = myMembers.length;
-    const activeMembers = myMembers.filter(m => m.membershipStatus === MembershipStatus.Active).length;
-    const upcomingClasses = mockClasses.filter(c => ['Saturday', 'Sunday'].includes(c.day)).length;
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const [membersData, classesData, paymentsData, growthData] = await Promise.all([
+                    api.get<Member[]>('/members'),
+                    api.get<GymClass[]>('/classes'),
+                    api.get<Payment[]>('/payments'),
+                    api.get<MemberGrowth[]>('/member-growth')
+                ]);
+                setMembers(membersData);
+                setClasses(classesData);
+                setPayments(paymentsData);
+                setGrowthData(growthData);
+            } catch (error) {
+                console.error("Failed to fetch dashboard data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const { myMembers, totalMembers, activeMembers, upcomingClasses } = useMemo(() => {
+        if (!user) return { myMembers: [], totalMembers: 0, activeMembers: 0, upcomingClasses: 0 };
+        
+        const userMembers = members.filter(m => m.assignedAdminId === user.id);
+        const weekendClasses = classes.filter(c => ['Saturday', 'Sunday'].includes(c.day)).length;
+        
+        return {
+            myMembers: userMembers,
+            totalMembers: userMembers.length,
+            activeMembers: userMembers.filter(m => m.membershipStatus === MembershipStatus.Active).length,
+            upcomingClasses: weekendClasses
+        };
+    }, [user, members, classes]);
+
+    if (loading) {
+        return <Loading />;
+    }
     
     return (
         <div className="space-y-8">
@@ -45,7 +84,7 @@ const Dashboard: React.FC = () => {
                 <h2 className="text-xl font-semibold mb-4 text-brand-text-light">New Member Growth</h2>
                  <div style={{ width: '100%', height: 300 }}>
                     <ResponsiveContainer>
-                        <LineChart data={memberGrowthData}>
+                        <LineChart data={growthData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                             <XAxis dataKey="name" stroke="#94a3b8" />
                             <YAxis stroke="#94a3b8" />
@@ -61,7 +100,7 @@ const Dashboard: React.FC = () => {
                 <div className="bg-brand-surface rounded-xl p-6 shadow-lg">
                     <h2 className="text-xl font-semibold mb-4 text-brand-text-light">Recent Activity</h2>
                      <ul className="space-y-4">
-                        {mockPayments.slice(0, 3).map(p => (
+                        {payments.slice(0, 3).map(p => (
                             <li key={p.id} className="flex items-center justify-between">
                                 <div className="flex items-center">
                                     <div className="bg-brand-success/20 p-2 rounded-full"><BillingIcon className="h-5 w-5 text-brand-success" /></div>
@@ -84,7 +123,7 @@ const Dashboard: React.FC = () => {
                 <div className="bg-brand-surface rounded-xl p-6 shadow-lg">
                     <h2 className="text-xl font-semibold mb-4 text-brand-text-light">Today's Classes</h2>
                      <ul className="space-y-3">
-                        {mockClasses.slice(0, 4).map(c => (
+                        {classes.slice(0, 4).map(c => (
                             <li key={c.id} className="flex justify-between items-center p-3 bg-brand-secondary/50 rounded-lg">
                                 <div>
                                     <p className="font-semibold">{c.name}</p>
